@@ -1,53 +1,93 @@
+import logging
+import time
+import uuid
+
 import numpy as np
+import tweepy
+from past import autotranslate
 
-TWEET_APPEND_SIZE = len("...(x/x)")
-TWEET_SIZE = 140
-MAX_TWEET_SIZE = 9 * (TWEET_SIZE - TWEET_APPEND_SIZE)
+autotranslate(['logging_twitter.handler'])
+from logging_twitter.handler import TwitterHandler
 
 
-def tweet_message(msg):
-    msg = str(msg)
+class TwitterHelper:
 
-    if len(msg) > MAX_TWEET_SIZE:
-        msg = msg[:MAX_TWEET_SIZE]
+    def __init__(self, consumer_key, consumer_secret, access_key, access_secret, debug=False):
+        self.consumer_key = consumer_key
+        self.consumer_secret = consumer_secret
+        self.access_key = access_key
+        self.access_secret = access_secret
+        self.debug = debug
 
-    tweets = []
+        if not self.debug:
+            auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
+            auth.set_access_token(self.access_key, self.access_secret)
+            self.tweet_api = tweepy.API(auth)
 
-    if len(msg) <= TWEET_SIZE:
-        tweets.append(msg)
+    def active_twitter_logger_for(self, target_twitter_user):
 
-    else:
-        i = 1
-        max = int( np.ceil( len(msg) / float(TWEET_SIZE - TWEET_APPEND_SIZE)))
+        # Add Twitter logging handler
+        handler = TwitterHandler(consumer_key=self.consumer_key,
+                                 consumer_secret=self.consumer_secret,
+                                 access_token_key=self.access_key,
+                                 access_token_secret=self.access_secret,
+                                 direct_message_user=target_twitter_user)
+        handler.setLevel(logging.ERROR)
+        logging.addHandler(handler)
 
-        while len(msg) > 0:
-            tweet_str = msg[ : TWEET_SIZE - TWEET_APPEND_SIZE]
-
-            if i != max :
-                tweet_str += "..."
+    def tweet(self, msg):
+        msg = "{}\n({})\n{}".format(msg, time.strftime("%H:%M:%S", time.localtime()), str(uuid.uuid4())[:8])
+        try:
+            if not self.debug:
+                self.tweet_api.update_status(msg)
             else:
-                tweet_str += " "
+                print(msg)
+        except Exception as e:
+            logging.error("Tweet went wrong: <{}> on tweet <{}> ".format(e, msg))
 
-            tweet_str += "({}/{})".format(i, max)
+    def tweet_message(self, msg):
+        msg = str(msg)
 
-            tweets.append( tweet_str )
+        # sum of character, a tweet can have
+        TWEET_SIZE = 140
+        # length of tweet-paging
+        TWEET_APPEND_SIZE = len("...(x/x)")
+        # the stuff from the 'tweet'-function to make every tweet unique
+        TWEET_EXTENSION_SIZE = 20
+        # length of message, that can really be used
+        USABLE_TWEET_SIZE = TWEET_SIZE - TWEET_EXTENSION_SIZE
+        # upper limit of message size
+        MAX_TWEET_SIZE = 9 * (USABLE_TWEET_SIZE - TWEET_APPEND_SIZE)
 
-            msg = msg[TWEET_SIZE - TWEET_APPEND_SIZE :]
-            i += 1
+        # cutting down to long messages
+        if len(msg) > MAX_TWEET_SIZE:
+            msg = msg[:MAX_TWEET_SIZE]
 
+        # tweets to send
+        tweets = []
 
-    for tweet in reversed(tweets):
-        #TODO
-        print(tweet)
+        if len(msg) <= USABLE_TWEET_SIZE:
+            tweets.append(msg)
 
+        else:
+            # iterator for messages
+            i = 1
+            # sum of messages
+            msg_sum = int( np.ceil( len(msg) / float(USABLE_TWEET_SIZE - TWEET_APPEND_SIZE)))
 
-tweet_message("wefwefgwefwe")
-print("###")
-tweet_message("Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et ma")
-print("###")
-tweet_message("Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et ma Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et ma")
-print("###")
-tweet_message("Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt tempus. Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit am")
-print("###")
-tweet_message("Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt tempus. Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit amüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüüü")
-print("###")
+            while len(msg) > 0:
+                tweet_str = msg[ : USABLE_TWEET_SIZE - TWEET_APPEND_SIZE]
+
+                if i != msg_sum:
+                    tweet_str += "..."
+                else:
+                    tweet_str += " "
+
+                tweet_str += "({}/{})".format(i, msg_sum)
+                tweets.append( tweet_str )
+                msg = msg[USABLE_TWEET_SIZE - TWEET_APPEND_SIZE :]
+                i += 1
+
+        for tweet in reversed(tweets):
+            self.tweet(tweet)
+

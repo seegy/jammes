@@ -3,13 +3,16 @@ from tweepy import OAuthHandler
 from tweepy import API
 
 from tweepy.streaming import StreamListener
+from threading import Thread
 import json
+from time import sleep
 
 # These values are appropriately filled in the code
 consumer_key = ""
 consumer_secret = ""
 access_token = ""
 access_token_secret = ""
+
 
 class StdOutListener( StreamListener ):
 
@@ -23,7 +26,7 @@ class StdOutListener( StreamListener ):
         print("Connection lost!! : ", notice)
 
     def on_data( self, status ):
-        #print("Entered on_data()")
+        # print("Entered on_data()")
 
         obj= json.loads(status)
 
@@ -46,26 +49,46 @@ class StdOutListener( StreamListener ):
         print(status)
 
 
+class TwitterListener (Thread):
+
+    def __init__(self):
+        super(TwitterListener, self).__init__()
+
+        try:
+            self.auth = OAuthHandler(consumer_key, consumer_secret)
+            self.auth.secure = True
+            self.auth.set_access_token(access_token, access_token_secret)
+
+            api = API(self.auth)
+
+            # If the authentication was successful, you should
+            # see the name of the account print out
+            print(api.me().name)
+
+        except BaseException as e:
+            print("Error in main()", e)
+
+    def run(self):
+        try:
+            stream = Stream(self.auth, StdOutListener())
+
+            stream.userstream()
+            print('This will not be printed...')
+
+        except BaseException as e:
+            print("Error in main()", e)
+
+
 def main():
 
-    try:
-        auth = OAuthHandler(consumer_key, consumer_secret)
-        auth.secure = True
-        auth.set_access_token(access_token, access_token_secret)
+    twitter_listener = TwitterListener()
+    # twitter_listener.setName("TwitterListener")
+    twitter_listener.start()
 
-        api = API(auth)
+    print("yes, i can do still stuff")
+    while True:
+        sleep(1)
 
-        # If the authentication was successful, you should
-        # see the name of the account print out
-        print(api.me().name)
-
-        stream = Stream(auth, StdOutListener())
-
-        stream.userstream()
-        print('?')
-
-    except BaseException as e:
-        print("Error in main()", e)
 
 if __name__ == '__main__':
     main()
