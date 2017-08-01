@@ -50,3 +50,6 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 config/config.ini
+
+# Python binaries
+*.pyc
