@@ -24,7 +24,7 @@ class TwitterHelper:
             auth.set_access_token(self.access_key, self.access_secret)
             self.tweet_api = tweepy.API(auth)
 
-    def active_twitter_logger_for(self, target_twitter_user):
+    def active_twitter_logger_for(self, logger_name, target_twitter_user):
 
         # Add Twitter logging handler
         handler = TwitterHandler(consumer_key=self.consumer_key,
@@ -33,7 +33,7 @@ class TwitterHelper:
                                  access_token_secret=self.access_secret,
                                  direct_message_user=target_twitter_user)
         handler.setLevel(logging.ERROR)
-        logging.addHandler(handler)
+        logging.getLogger(logger_name).addHandler(handler)
 
     def tweet(self, msg):
         msg = "{}\n({})\n{}".format(msg, time.strftime("%H:%M:%S", time.localtime()), str(uuid.uuid4())[:8])
@@ -43,6 +43,7 @@ class TwitterHelper:
             else:
                 print(msg)
         except Exception as e:
+            print("Tweet went wrong: <{}> on tweet <{}> ".format(e, msg))
             logging.error("Tweet went wrong: <{}> on tweet <{}> ".format(e, msg))
 
     def tweet_message(self, msg):
