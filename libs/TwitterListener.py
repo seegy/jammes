@@ -39,12 +39,7 @@ class StdOutListener( StreamListener ):
         return True
 
     def on_direct_message( self, status ):
-        print("Entered on_direct_message()")
-        try:
-            print(status, flush = True)
-            return True
-        except BaseException as e:
-            self.logger.error("Failed on_direct_message(): {}".format(str(e)))
+        self.on_data(status)
 
     def on_error( self, status ):
         print(status)
