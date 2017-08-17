@@ -14,62 +14,90 @@ consumer_secret = ""
 access_token = ""
 access_token_secret = ""
 
-
 class StdOutListener( StreamListener ):
 
-    def __init__( self, logger ):
-        self.tweetCount = 0
-        self.logger = logger
+    def __init__( self ):
+        self.isStopped = False
 
     def on_connect( self ):
-        self.logger.info("Connection established!!")
+        print("Connection established!!")
 
     def on_disconnect( self, notice ):
-        self.logger.error("Connection lost!! : {}".format(notice))
+        print("Connection lost!! : ", notice)
 
     def on_data( self, status ):
-        self.logger.info("Entered on_data()")
+
+        if self.isStopped:
+            return False
+
         obj= json.loads(status)
 
         if 'direct_message' in obj:
             dm = obj['direct_message']
             sender = dm['sender']
-            self.logger.info("<{}> {}: {}".format(dm['created_at'], sender['screen_name'], dm['text']))
+            print("<{}> {}: {}".format(dm['created_at'], sender['screen_name'], dm['text']))
 
         return True
 
     def on_direct_message( self, status ):
-        self.on_data(status)
+        self.on_data()
 
     def on_error( self, status ):
-        print(status)
+        print("A problem occured: {}".format(status))
+
+    def stop(self):
+        self.isStopped = True
 
 
 class TwitterListener (Thread):
 
-    def __init__(self, consumer_key, consumer_secret, access_key, access_secret, logger):
+    def __init__(self, auth):
         super(TwitterListener, self).__init__()
-        self.logger = logger
+        self.listener = None
+        self.auth = auth
+
+    def run(self):
+        try:
+            self.listener = StdOutListener()
+            stream = Stream(self.auth, self.listener)
+
+            stream.userstream()
+
+            print('Listening to Twitter finally stopped.')
+
+        except BaseException as e:
+            print("Error in main()", e)
+
+    def stop(self):
+        if self.listener is not None:
+            print("disconnecting from Twitter")
+            self.listener.stop()
+
+
+class TwitterManager:
+
+    def __init__(self, consumer_key, consumer_secret, access_token, access_token_secret):
+        self.listener = None
 
         try:
             self.auth = OAuthHandler(consumer_key, consumer_secret)
             self.auth.secure = True
-            self.auth.set_access_token(access_key, access_secret)
+            self.auth.set_access_token(access_token, access_token_secret)
 
             api = API(self.auth)
 
             # If the authentication was successful, you should
             # see the name of the account print out
-            self.logger.info("Successfully authenticate with twitter account '{}'.".format(api.me().name))
+            print(api.me().name)
 
         except BaseException as e:
-            self.logger.error("Error in main()", e)
+            print("Error in main()", e)
 
-    def run(self):
-        try:
-            stream = Stream(self.auth, StdOutListener(self.logger) )
+    def start_listener(self):
+        self.listener = TwitterListener(self.auth)
+        # twitter_listener.setName("TwitterListener")
+        self.listener.start()
 
-            stream.userstream()
-
-        except BaseException as e:
-            self.logger.error("Error in main()", e)
+    def stop_listener(self):
+        self.listener.stop()
+        self.listener = None
