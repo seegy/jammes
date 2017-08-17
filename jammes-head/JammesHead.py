@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import configparser
 import sys
 import os
@@ -5,7 +7,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from libs import TwitterHelper as th
 from time import sleep
-from libs import TwitterListener as tl
+from libs import TwitterManager as tm
 
 DEBUG = False
 
@@ -63,13 +65,11 @@ if config.getboolean('Twitter', 'log_via_twitter', fallback=False):
 def main():
 
     # init twitter listener
-    twitter_listener = tl.TwitterListener(config.get('Twitter', 'consumer_key'),
+    twitter_manager = tm.TwitterManager(config.get('Twitter', 'consumer_key'),
                                           config.get('Twitter', 'consumer_secret'),
                                           config.get('Twitter', 'access_token'),
-                                          config.get('Twitter', 'access_token_secret'),
-                                          logger)
-    twitter_listener.setName("TwitterListener")
-    twitter_listener.start()
+                                          config.get('Twitter', 'access_token_secret'))
+    twitter_manager.start_listener()
 
     logger.info("TwitterListener initialized.")
 
